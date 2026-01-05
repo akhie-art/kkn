@@ -1,65 +1,143 @@
-import Image from "next/image";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, BookOpen, MapPin, ShieldCheck } from "lucide-react"
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen flex-col bg-background">
+      
+      {/* --- HEADER / NAVBAR --- */}
+      {/* Tambahkan mx-auto agar navbar rata tengah di layar lebar */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-2 font-bold text-xl text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <span>KKN App</span>
+          </div>
+          <nav className="flex items-center gap-4">
+            <Link href="/auth/login">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Masuk</Button>
+            </Link>
+            <Link href="/auth/register">
+              <Button size="sm">Daftar Akun</Button>
+            </Link>
+          </nav>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="flex-1">
+        
+        {/* --- HERO SECTION --- */}
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-b from-white via-zinc-50 to-white dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+          {/* Tambahkan mx-auto di sini */}
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="inline-block rounded-lg bg-zinc-100 px-3 py-1 text-sm dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 mb-4">
+                🎉 Sistem KKN Terintegrasi 2026
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-zinc-900 dark:text-zinc-50">
+                  Dokumentasi KKN <br className="hidden md:inline" />
+                  <span className="text-primary">Lebih Mudah & Terstruktur</span>
+                </h1>
+                <p className="mx-auto max-w-[700px] text-zinc-500 md:text-xl dark:text-zinc-400">
+                  Sistem logbook digital dengan fitur absensi wajah, validasi radius lokasi, dan pelaporan real-time untuk mahasiswa dan DPL.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-6">
+                <Link href="/auth/login">
+                  <Button className="h-11 px-8 w-full sm:w-auto" size="lg">
+                    Mulai Sekarang <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/about">
+                  <Button variant="outline" className="h-11 px-8 w-full sm:w-auto bg-background" size="lg">
+                    Pelajari Sistem
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- FEATURES SECTION --- */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-white dark:bg-zinc-950 border-t">
+          {/* Tambahkan mx-auto di sini */}
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Fitur Unggulan</h2>
+              <p className="text-zinc-500 mt-2">Teknologi modern untuk mendukung kegiatan pengabdian.</p>
+            </div>
+            
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              
+              {/* Feature 1 */}
+              <div className="group flex flex-col items-center space-y-4 text-center p-6 border rounded-2xl bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+                <div className="p-4 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">Logbook Digital</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Catat kegiatan harian dengan mudah, lengkap dengan upload foto dokumentasi kegiatan secara real-time.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="group flex flex-col items-center space-y-4 text-center p-6 border rounded-2xl bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+                <div className="p-4 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">Absensi Wajah (AI)</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Validasi kehadiran anti-titip absen menggunakan teknologi Face Recognition yang akurat dan cepat.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="group flex flex-col items-center space-y-4 text-center p-6 border rounded-2xl bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+                <div className="p-4 rounded-full bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 group-hover:scale-110 transition-transform">
+                  <MapPin className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">Geotagging Radius</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Presensi terkunci secara otomatis jika mahasiswa berada di luar radius lokasi posko yang ditentukan.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </section>
       </main>
+
+      {/* --- FOOTER --- */}
+      <footer className="w-full border-t bg-zinc-50 dark:bg-zinc-900">
+        {/* Tambahkan mx-auto di sini */}
+        <div className="container mx-auto flex flex-col gap-4 py-8 px-4 md:px-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-1">
+             <div className="flex items-center gap-2 font-semibold text-lg">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span>KKN App System</span>
+             </div>
+             <p className="text-xs text-muted-foreground">
+               &copy; 2026 KKN App. Built for Community Service.
+             </p>
+          </div>
+          
+          <nav className="flex gap-4 sm:gap-6">
+            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground" href="#">
+              Bantuan
+            </Link>
+            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground" href="#">
+              Syarat & Ketentuan
+            </Link>
+            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground" href="#">
+              Kebijakan Privasi
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
