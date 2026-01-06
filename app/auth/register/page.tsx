@@ -25,11 +25,11 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle" // Pastikan path import sesuai
 
 import * as faceapi from 'face-api.js'
 
 // --- SUPABASE CLIENT ---
-// Pastikan variabel environment sudah diatur di .env.local
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -147,10 +147,9 @@ export default function RegisterPage() {
         if (detection) {
           setIsFaceDetected(true)
           
-          // Visualisasi minimalis: hanya kotak hijau tipis
           const resizedDetections = faceapi.resizeResults(detection, displaySize)
           const box = resizedDetections.detection.box
-          ctx.strokeStyle = '#22c55e' // Green-500
+          ctx.strokeStyle = '#22c55e' 
           ctx.lineWidth = 2
           ctx.strokeRect(box.x, box.y, box.width, box.height)
 
@@ -226,29 +225,26 @@ export default function RegisterPage() {
       const photoBlob = base64ToBlob(photo)
       const fileName = `${uniqueId}.jpg`
       
-      // A. Upload Foto ke Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, photoBlob, { contentType: 'image/jpeg', upsert: true })
 
       if (uploadError) throw new Error(`Gagal upload foto: ${uploadError.message}`)
 
-      // B. Ambil Public URL
       const { data: publicUrlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
-      // C. Simpan data ke Tabel Users
       const { error: insertError } = await supabase
         .from('users')
         .insert({
             full_name: name,
             email: email,
-            password: password, // Note: Pertimbangkan untuk hashing password di backend/edge function
+            password: password, 
             avatar_url: publicUrlData.publicUrl,
             face_descriptor: faceData.descriptor, 
             face_landmarks: faceData.landmarks,
-            role: 'mahasiswa' // <-- PENTING: Set role default secara eksplisit
+            role: 'mahasiswa'
         })
 
       if (insertError) throw new Error("Gagal menyimpan data ke database.")
@@ -265,12 +261,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 p-4 font-sans text-zinc-900">
-      <Card className="w-full max-w-[420px] border border-zinc-200 bg-white shadow-none rounded-2xl overflow-hidden">
+    <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 font-sans text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+      
+      {/* Dark Mode Toggle Positioned Absolutely */}
+      <div className="absolute top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
+
+      <Card className="w-full max-w-[420px] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
         
         <CardHeader className="text-center pb-6 pt-8 space-y-1">
-          <CardTitle className="text-xl font-semibold tracking-tight">Buat Akun Baru</CardTitle>
-          <CardDescription className="text-zinc-500">
+          <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Buat Akun Baru</CardTitle>
+          <CardDescription className="text-zinc-500 dark:text-zinc-400">
             Lengkapi data diri dan scan wajah Anda
           </CardDescription>
         </CardHeader>
@@ -280,11 +282,11 @@ export default function RegisterPage() {
             
             {/* Input Nama */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Nama Lengkap</Label>
+              <Label htmlFor="name" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Nama Lengkap</Label>
               <Input 
                 id="name" 
                 placeholder="Nama Lengkap Anda" 
-                className="h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-400 focus:ring-0 rounded-xl transition-all" 
+                className="h-11 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-zinc-400 dark:focus:border-zinc-700 focus:ring-0 rounded-xl transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -293,12 +295,12 @@ export default function RegisterPage() {
 
             {/* Input Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Email</Label>
+              <Label htmlFor="email" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Email</Label>
               <Input 
                 id="email" 
                 type="email" 
                 placeholder="nama@email.com" 
-                className="h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-400 focus:ring-0 rounded-xl transition-all" 
+                className="h-11 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-zinc-400 dark:focus:border-zinc-700 focus:ring-0 rounded-xl transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -307,13 +309,13 @@ export default function RegisterPage() {
 
             {/* Input Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Password</Label>
+              <Label htmlFor="password" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Password</Label>
               <div className="relative">
                 <Input 
                   id="password" 
                   type={showPassword ? "text" : "password"} 
                   placeholder="Minimal 6 karakter" 
-                  className="h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-400 focus:ring-0 rounded-xl transition-all pr-10" 
+                  className="h-11 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-zinc-400 dark:focus:border-zinc-700 focus:ring-0 rounded-xl transition-all pr-10 placeholder:text-zinc-400 dark:placeholder:text-zinc-600" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -322,7 +324,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 transition-colors"
+                  className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -332,16 +334,16 @@ export default function RegisterPage() {
             {/* CAMERA SECTION (Clean & Flat) */}
             <div className="pt-2">
               <div className="flex items-center justify-between mb-3">
-                 <Label className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Foto Wajah</Label>
+                 <Label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Foto Wajah</Label>
                  {photo && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-green-600 animate-in fade-in">
+                    <span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-500 animate-in fade-in">
                        <CheckCircle2 className="h-3 w-3" /> Siap
                     </span>
                  )}
               </div>
               
               <div className="flex justify-center">
-                <div className="relative h-48 w-48 overflow-hidden rounded-full bg-zinc-100 border border-zinc-200 group">
+                <div className="relative h-48 w-48 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group transition-colors">
                   {!photo ? (
                     isCameraOpen ? (
                       <>
@@ -366,8 +368,8 @@ export default function RegisterPage() {
                             disabled={!isFaceDetected}
                             className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300
                               ${isFaceDetected 
-                                ? 'bg-white text-zinc-900 hover:scale-110 shadow-sm' 
-                                : 'bg-white/50 text-zinc-400 cursor-not-allowed'
+                                ? 'bg-white dark:bg-zinc-100 text-zinc-900 hover:scale-110 shadow-sm' 
+                                : 'bg-white/50 dark:bg-black/50 text-zinc-400 dark:text-zinc-500 cursor-not-allowed'
                               }`}
                           >
                             <Camera className="h-5 w-5" />
@@ -376,13 +378,13 @@ export default function RegisterPage() {
                       </>
                     ) : (
                       // State: Camera Closed
-                      <div className="flex h-full w-full flex-col items-center justify-center text-zinc-400 gap-2">
+                      <div className="flex h-full w-full flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 gap-2">
                         {isModelLoading ? (
                            <Loader2 className="h-6 w-6 animate-spin" />
                         ) : (
                            <ScanFace className="h-10 w-10 opacity-50" />
                         )}
-                        <span className="text-xs font-medium text-zinc-500">
+                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                           {isModelLoading ? "Memuat AI..." : "Belum ada foto"}
                         </span>
                         {!isModelLoading && (
@@ -391,7 +393,7 @@ export default function RegisterPage() {
                             variant="outline" 
                             size="sm" 
                             onClick={startCamera}
-                            className="mt-2 h-8 text-xs bg-white border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg shadow-none"
+                            className="mt-2 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg shadow-none"
                           >
                             Buka Kamera
                           </Button>
@@ -408,7 +410,7 @@ export default function RegisterPage() {
                           variant="secondary" 
                           size="sm" 
                           onClick={retakePhoto}
-                          className="h-8 rounded-lg bg-white/90 text-zinc-900 hover:bg-white border-none shadow-none text-xs"
+                          className="h-8 rounded-lg bg-white/90 dark:bg-black/90 text-zinc-900 dark:text-white hover:bg-white dark:hover:bg-black border-none shadow-none text-xs"
                         >
                           <RefreshCw className="mr-2 h-3 w-3" /> Ulangi
                         </Button>
@@ -431,9 +433,9 @@ export default function RegisterPage() {
 
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-4 border-t border-zinc-100 bg-zinc-50/50 py-6 mt-2">
+          <CardFooter className="flex flex-col gap-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 py-6 mt-2 transition-colors">
             <Button 
-              className="w-full h-11 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium tracking-wide shadow-none transition-all" 
+              className="w-full h-11 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-medium tracking-wide shadow-none transition-all" 
               type="submit" 
               disabled={isLoading || !photo || !faceData.descriptor}
             >
@@ -441,9 +443,9 @@ export default function RegisterPage() {
               {isLoading ? "Memproses..." : "Daftar Sebagai Mahasiswa"}
             </Button>
 
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
               Sudah punya akun?{" "}
-              <Link href="/auth/login" className="font-medium text-zinc-900 hover:underline">
+              <Link href="/auth/login" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline">
                 Masuk
               </Link>
             </div>

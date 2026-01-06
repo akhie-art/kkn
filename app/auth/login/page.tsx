@@ -24,15 +24,13 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { 
   Loader2, 
-  Mail, 
-  Lock, 
-  LogIn, 
   Eye, 
   EyeOff, 
   ScanFace, 
   UserCheck,
   UserX
 } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 import * as faceapi from 'face-api.js'
 
 // --- SUPABASE CONFIG ---
@@ -240,11 +238,10 @@ export default function LoginPage() {
           ctx.clearRect(0, 0, canvas.width, canvas.height)
           
           if (detection) {
-            // Visualisasi deteksi (Optional: bisa dihapus jika ingin super clean)
+            // Visualisasi deteksi
             const resizedDetections = faceapi.resizeResults(detection, displaySize)
             const box = resizedDetections.detection.box
             
-            // Draw custom cleaner box instead of default library box
             ctx.strokeStyle = '#22c55e' // Green-500
             ctx.lineWidth = 2
             ctx.strokeRect(box.x, box.y, box.width, box.height)
@@ -282,30 +279,35 @@ export default function LoginPage() {
   }
 
   return (
-    // Background bersih (putih/off-white) tanpa pattern
-    <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 p-4 font-sans text-zinc-900">
+    // Background responsif dark/light
+    <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 font-sans text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
       
-      {/* Card tanpa shadow, border tipis, rounded modern */}
-      <Card className="w-full max-w-[400px] border border-zinc-200 bg-white shadow-none rounded-2xl overflow-hidden">
+      {/* Dark Mode Toggle Positioned Absolutely */}
+      <div className="absolute top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
+
+      {/* Card Wrapper */}
+      <Card className="w-full max-w-[400px] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
         
         <CardHeader className="text-center pb-6 pt-8 space-y-1">
-          <CardTitle className="text-xl font-semibold tracking-tight">Selamat Datang</CardTitle>
-          <CardDescription className="text-zinc-500">
+          <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Selamat Datang</CardTitle>
+          <CardDescription className="text-zinc-500 dark:text-zinc-400">
             Silakan masuk untuk melanjutkan akses
           </CardDescription>
         </CardHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-6">
-          <TabsList className="grid w-full grid-cols-2 bg-zinc-100/50 p-1 rounded-xl mb-6">
+          <TabsList className="grid w-full grid-cols-2 bg-zinc-100/50 dark:bg-zinc-800/50 p-1 rounded-xl mb-6">
             <TabsTrigger 
               value="manual" 
-              className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm text-zinc-500 transition-all text-sm font-medium"
+              className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:text-zinc-900 dark:data-[state=active]:text-zinc-50 data-[state=active]:shadow-sm text-zinc-500 dark:text-zinc-400 transition-all text-sm font-medium"
             >
               Password
             </TabsTrigger>
             <TabsTrigger 
               value="face" 
-              className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm text-zinc-500 transition-all text-sm font-medium"
+              className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-950 data-[state=active]:text-zinc-900 dark:data-[state=active]:text-zinc-50 data-[state=active]:shadow-sm text-zinc-500 dark:text-zinc-400 transition-all text-sm font-medium"
             >
               Wajah
             </TabsTrigger>
@@ -316,12 +318,12 @@ export default function LoginPage() {
             <form onSubmit={handleManualLogin} className="space-y-4">
               <div className="space-y-4 pb-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Email</Label>
+                  <Label htmlFor="email" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Email</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     placeholder="nama@email.com" 
-                    className="h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-400 focus:ring-0 rounded-xl transition-all" 
+                    className="h-11 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-zinc-400 dark:focus:border-zinc-700 focus:ring-0 rounded-xl transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -329,15 +331,15 @@ export default function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <Label htmlFor="password" className="text-xs font-medium text-zinc-600 uppercase tracking-wider">Password</Label>
-                    <Link href="#" className="text-xs text-zinc-400 hover:text-zinc-900 transition-colors">Lupa?</Link>
+                    <Label htmlFor="password" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Password</Label>
+                    <Link href="#" className="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">Lupa?</Link>
                   </div>
                   <div className="relative">
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"} 
                       placeholder="••••••" 
-                      className="h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-400 focus:ring-0 rounded-xl transition-all pr-10" 
+                      className="h-11 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-zinc-400 dark:focus:border-zinc-700 focus:ring-0 rounded-xl transition-all pr-10 placeholder:text-zinc-400 dark:placeholder:text-zinc-600" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -345,7 +347,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -354,7 +356,7 @@ export default function LoginPage() {
               </div>
               
               <Button 
-                className="w-full h-11 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium tracking-wide shadow-none transition-all" 
+                className="w-full h-11 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-medium tracking-wide shadow-none transition-all" 
                 type="submit" 
                 disabled={isLoading}
               >
@@ -367,10 +369,10 @@ export default function LoginPage() {
           <TabsContent value="face" className="mt-0 pb-6">
             <div className="flex flex-col items-center justify-center space-y-6">
               
-              {/* Camera Container - Clean Circle without heavy borders */}
-              <div className="relative h-48 w-48 overflow-hidden rounded-full bg-zinc-100 border border-zinc-200">
+              {/* Camera Container */}
+              <div className="relative h-48 w-48 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
                 {isModelLoading && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-20">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 z-20 transition-colors">
                     <Loader2 className="h-6 w-6 animate-spin text-zinc-400 mb-2" />
                     <span className="text-xs font-medium text-zinc-400">Memuat AI...</span>
                   </div>
@@ -394,28 +396,28 @@ export default function LoginPage() {
               <div className="text-center w-full min-h-[60px]">
                 {faceMatchStatus === "scanning" && (
                   <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2">
-                    <ScanFace className="h-5 w-5 text-zinc-400 mb-2 animate-pulse" />
-                    <p className="text-sm font-medium text-zinc-600">Pindai wajah...</p>
+                    <ScanFace className="h-5 w-5 text-zinc-400 dark:text-zinc-500 mb-2 animate-pulse" />
+                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Pindai wajah...</p>
                   </div>
                 )}
 
                 {faceMatchStatus === "found" && (
                   <div className="flex flex-col items-center animate-in zoom-in duration-300">
-                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center mb-2">
-                        <UserCheck className="h-4 w-4 text-green-600" />
+                    <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-2">
+                        <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
-                    <p className="text-sm font-semibold text-zinc-900">{detectedName}</p>
-                    <p className="text-xs text-zinc-500">Terverifikasi</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{detectedName}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Terverifikasi</p>
                   </div>
                 )}
 
                 {faceMatchStatus === "unknown" && (
                   <div className="flex flex-col items-center animate-in shake duration-300">
-                    <div className="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center mb-2">
-                        <UserX className="h-4 w-4 text-red-500" />
+                    <div className="h-8 w-8 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center mb-2">
+                        <UserX className="h-4 w-4 text-red-500 dark:text-red-400" />
                     </div>
-                    <p className="text-sm font-medium text-zinc-600">Wajah tidak dikenali</p>
-                    <p className="text-xs text-zinc-400">Coba atur pencahayaan</p>
+                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Wajah tidak dikenali</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500">Coba atur pencahayaan</p>
                   </div>
                 )}
               </div>
@@ -424,10 +426,10 @@ export default function LoginPage() {
           </TabsContent>
         </Tabs>
         
-        <CardFooter className="flex justify-center border-t border-zinc-100 bg-zinc-50/50 py-4 mt-2">
-           <div className="text-xs text-zinc-500">
+        <CardFooter className="flex justify-center border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 py-4 mt-2 transition-colors">
+           <div className="text-xs text-zinc-500 dark:text-zinc-400">
               Belum punya akun?{" "}
-              <Link href="/auth/register" className="font-medium text-zinc-900 hover:underline">
+              <Link href="/auth/register" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline">
                 Daftar
               </Link>
             </div>

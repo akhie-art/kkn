@@ -90,6 +90,11 @@ export default function Header() {
     if (pathname.includes("/logbook")) return "Logbook Harian"
     if (pathname.includes("/profile")) return "Profil Saya"
     if (pathname.includes("/settings")) return "Pengaturan"
+    if (pathname.includes("/absensi")) return "Absensi"
+    if (pathname.includes("/radius")) return "Radius"
+    if (pathname.includes("/management-user")) return "Management User"
+    if (pathname.includes("/absensi/table")) return "Data Absensi"
+    if (pathname.includes("/stunting")) return "Stunting"
     return "Aplikasi"
   }
 

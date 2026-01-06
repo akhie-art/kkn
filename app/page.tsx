@@ -7,18 +7,24 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col bg-background">
       
       {/* --- HEADER / NAVBAR --- */}
-      {/* Tambahkan mx-auto agar navbar rata tengah di layar lebar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+          {/* Logo Section */}
           <div className="flex items-center gap-2 font-bold text-xl text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <BookOpen className="h-5 w-5" />
             </div>
+            {/* Span hidden on very small screens if needed, but usually okay */}
             <span>KKN App</span>
           </div>
-          <nav className="flex items-center gap-4">
+
+          {/* Navigation Buttons */}
+          <nav className="flex items-center gap-2 sm:gap-4">
             <Link href="/auth/login">
-              <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Masuk</Button>
+              {/* PERBAIKAN: Menghapus 'hidden sm:inline-flex' agar muncul di mobile */}
+              <Button variant="ghost" size="sm">
+                Masuk
+              </Button>
             </Link>
             <Link href="/auth/register">
               <Button size="sm">Daftar Akun</Button>
@@ -31,7 +37,6 @@ export default function LandingPage() {
         
         {/* --- HERO SECTION --- */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-b from-white via-zinc-50 to-white dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-          {/* Tambahkan mx-auto di sini */}
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="inline-block rounded-lg bg-zinc-100 px-3 py-1 text-sm dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 mb-4">
@@ -64,7 +69,6 @@ export default function LandingPage() {
 
         {/* --- FEATURES SECTION --- */}
         <section className="w-full py-12 md:py-24 lg:py-32 bg-white dark:bg-zinc-950 border-t">
-          {/* Tambahkan mx-auto di sini */}
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Fitur Unggulan</h2>
@@ -113,7 +117,6 @@ export default function LandingPage() {
 
       {/* --- FOOTER --- */}
       <footer className="w-full border-t bg-zinc-50 dark:bg-zinc-900">
-        {/* Tambahkan mx-auto di sini */}
         <div className="container mx-auto flex flex-col gap-4 py-8 px-4 md:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-1">
              <div className="flex items-center gap-2 font-semibold text-lg">
