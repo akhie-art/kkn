@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation" 
+import Image from "next/image" // Import Image component
 
 import {
   Table,
@@ -60,8 +61,8 @@ import {
   User,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
-  ScanFace
+  ScanFace,
+  XCircle
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "sonner"
@@ -81,7 +82,7 @@ const supabase = (supabaseUrl && supabaseKey)
 ====================== */
 type Logbook = {
   id: number
-  user_id: string // Ditambahkan untuk relasi user
+  user_id: string
   nama: string
   tanggal: string
   kegiatan: string
@@ -95,7 +96,6 @@ type RadiusSettings = {
   radius_meters: number
 }
 
-// Tipe untuk User Session
 type UserSession = {
   id: string
   email: string
@@ -116,7 +116,7 @@ const formatDate = (dateString: string) => {
       month: "long",
       year: "numeric",
     }).format(date)
-  } catch (e) {
+  } catch {
     return dateString
   }
 }
@@ -197,11 +197,9 @@ export default function LogbookPage() {
      FETCH DATA FUNCTIONS
   ====================== */
   
-  // Menggunakan useCallback agar tidak memicu re-render berlebih
   const fetchLogbooks = useCallback(async (userId: string) => {
     if (!supabase) return
     try {
-      // PERBAIKAN: Filter berdasarkan user_id
       const { data: logbooks, error } = await supabase
         .from('logbooks')
         .select('*')
@@ -210,16 +208,20 @@ export default function LogbookPage() {
 
       if (error) throw error
       if (logbooks) setData(logbooks as unknown as Logbook[])
-    } catch (err: any) {
+    
+    // FIX 1: unknown error type
+    } catch (err: unknown) {
       console.error("Error fetching logbooks:", err)
-      toast.error("Gagal Memuat Data", { description: err.message })
+      if (err instanceof Error) {
+        toast.error("Gagal Memuat Data", { description: err.message })
+      }
     }
   }, [])
 
   const fetchRadiusSettings = useCallback(async () => {
     if (!supabase) return
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('radius_settings')
         .select('*')
         .single()
@@ -241,14 +243,12 @@ export default function LogbookPage() {
   ====================== */
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
-      // 1. Cek Koneksi Supabase
       if (!supabase) {
         setErrorMsg("Koneksi Supabase belum dikonfigurasi. Cek .env.local")
         setIsLoading(false)
         return
       }
 
-      // 2. Cek Session dari LocalStorage
       const sessionStr = localStorage.getItem("user_session")
       
       if (!sessionStr) {
@@ -260,16 +260,14 @@ export default function LogbookPage() {
         const userSession = JSON.parse(sessionStr)
         setCurrentUser(userSession)
         
-        // Auto-fill nama dari session jika form kosong
         if(!nama) setNama(userSession.full_name || "") 
 
-        // 3. Ambil data hanya setelah user ID tersedia
         await Promise.all([
           fetchLogbooks(userSession.id),
           fetchRadiusSettings()
         ])
         
-      } catch (e) {
+      } catch {
         localStorage.removeItem("user_session")
         router.replace("/auth/login")
         return
@@ -286,7 +284,8 @@ export default function LogbookPage() {
      CAMERA & FACE API LOGIC
   ====================== */
 
-  const loadModels = async () => {
+  // FIX 3: Bungkus dengan useCallback
+  const loadModels = useCallback(async () => {
     if (modelLoaded) return
     setIsModelLoading(true)
     try {
@@ -299,9 +298,26 @@ export default function LogbookPage() {
     } finally {
       setIsModelLoading(false)
     }
-  }
+  }, [modelLoaded])
 
-  const startCamera = async () => {
+  // FIX 3: Bungkus dengan useCallback
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    setIsFaceDetected(false)
+  }, [])
+
+  // FIX 3: Bungkus dengan useCallback
+  const startCamera = useCallback(async () => {
     await loadModels()
 
     try {
@@ -323,7 +339,7 @@ export default function LogbookPage() {
       console.error("Camera Error:", err)
       toast.error("Gagal Akses Kamera", { description: "Pastikan izin kamera diberikan." })
     }
-  }
+  }, [loadModels, stopCamera])
 
   const handleVideoOnPlay = () => {
     const video = videoRef.current
@@ -350,25 +366,9 @@ export default function LogbookPage() {
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         faceapi.draw.drawDetections(canvas, resizedDetections)
-        // Set state wajah terdeteksi
         setIsFaceDetected(detections.length > 0)
       }
     }, 200)
-  }
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    setIsFaceDetected(false)
   }
 
   const getAddressFromCoords = async (lat: number, lon: number) => {
@@ -384,7 +384,7 @@ export default function LogbookPage() {
         address.city || address.town
       ].filter(Boolean).join(", ")
       return simpleAddress || "Lokasi terdeteksi"
-    } catch (error) {
+    } catch {
       return `${lat.toFixed(6)}, ${lon.toFixed(6)}`
     }
   }
@@ -433,12 +433,11 @@ export default function LogbookPage() {
               toast.error("Di Luar Radius!", { description: `Jarak ${Math.round(dist)}m. Max ${radiusSettings.radius_meters}m.` })
             }
           } else {
-            // Jika tidak ada setting radius, anggap valid
             setIsInsideRadius(true) 
           }
           setIsGettingLocation(false)
         },
-        (error) => {
+        () => {
           setLokasi("Gagal mengambil lokasi")
           setIsGettingLocation(false)
           toast.warning("GPS Error", { description: "Gagal mengambil GPS." })
@@ -450,6 +449,7 @@ export default function LogbookPage() {
     }
   }
 
+  // FIX 3: useEffect dengan dependensi yang benar
   useEffect(() => {
     if (open && !foto) {
       startCamera()
@@ -457,7 +457,7 @@ export default function LogbookPage() {
       stopCamera()
     }
     return () => stopCamera()
-  }, [open, foto])
+  }, [open, foto, startCamera, stopCamera])
 
   const retakePhoto = () => {
     setFoto("")
@@ -470,20 +470,18 @@ export default function LogbookPage() {
   /* ======================
      DATA PROCESSING
   ====================== */
-  const filteredData = useMemo(() => {
-    return data
-      .filter(
-        (item) =>
-          item.kegiatan.toLowerCase().includes(search.toLowerCase()) ||
-          item.nama.toLowerCase().includes(search.toLowerCase()) ||
-          item.tanggal.includes(search)
-      )
-      .sort((a, b) => {
-        if (a.tanggal < b.tanggal) return sortDir === "asc" ? -1 : 1
-        if (a.tanggal > b.tanggal) return sortDir === "asc" ? 1 : -1
-        return 0
-      })
-  }, [data, search, sortDir])
+  const filteredData = data
+    .filter(
+      (item) =>
+        item.kegiatan.toLowerCase().includes(search.toLowerCase()) ||
+        item.nama.toLowerCase().includes(search.toLowerCase()) ||
+        item.tanggal.includes(search)
+    )
+    .sort((a, b) => {
+      if (a.tanggal < b.tanggal) return sortDir === "asc" ? -1 : 1
+      if (a.tanggal > b.tanggal) return sortDir === "asc" ? 1 : -1
+      return 0
+    })
 
   const totalPages = Math.ceil(filteredData.length / perPage)
   const paginatedData = filteredData.slice((page - 1) * perPage, page * perPage)
@@ -510,7 +508,7 @@ export default function LogbookPage() {
     try {
       setIsSubmitting(true)
       const blob = base64ToBlob(foto)
-      const fileName = `${currentUser.id}/${Date.now()}.jpg` // Simpan di folder ID User
+      const fileName = `${currentUser.id}/${Date.now()}.jpg`
       
       const { error: uploadError } = await supabase.storage
         .from('logbook-photos')
@@ -522,7 +520,6 @@ export default function LogbookPage() {
         .from('logbook-photos')
         .getPublicUrl(fileName)
 
-      // PERBAIKAN: Insert user_id
       const { error: insertError } = await supabase
         .from('logbooks')
         .insert([{
@@ -543,11 +540,13 @@ export default function LogbookPage() {
       setDistance(null) 
       setOpen(false)
       
-      // Refresh data
       fetchLogbooks(currentUser.id)
 
-    } catch (err: any) {
-      toast.error("Error", { description: err.message })
+    // FIX 1: unknown error type
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error("Error", { description: err.message })
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -556,7 +555,6 @@ export default function LogbookPage() {
   const confirmDelete = async () => {
     if (!supabase || !deleteId || !currentUser) return
     try {
-      // PERBAIKAN: Pastikan menghapus data milik user sendiri
       const { error } = await supabase
         .from('logbooks')
         .delete()
@@ -568,8 +566,11 @@ export default function LogbookPage() {
       toast.success("Terhapus", { description: "Data logbook dihapus." })
       setDeleteId(null)
       fetchLogbooks(currentUser.id)
-    } catch (err: any) {
-      toast.error("Gagal Hapus", { description: err.message })
+    // FIX 1: unknown error type
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+         toast.error("Gagal Hapus", { description: err.message })
+      }
     }
   }
 
@@ -655,9 +656,10 @@ export default function LogbookPage() {
                       <label className="text-sm font-medium leading-none">Deskripsi Kegiatan</label>
                       <div className="relative">
                         <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        {/* FIX 5: min-h-[120px] -> min-h-30 */}
                         <textarea 
                           placeholder="Contoh: Mengajar TPA..."
-                          className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          className="flex min-h-30 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           value={kegiatan}
                           onChange={(e) => setKegiatan(e.target.value)}
                         />
@@ -702,7 +704,8 @@ export default function LogbookPage() {
                              </div>
                           )}
 
-                          <div className="absolute inset-0 flex items-end justify-center pb-4 z-10 bg-gradient-to-t from-black/50 to-transparent">
+                          {/* FIX 5: bg-gradient-to-t -> bg-linear-to-t */}
+                          <div className="absolute inset-0 flex items-end justify-center pb-4 z-10 bg-linear-to-t from-black/50 to-transparent">
                              <Button 
                                variant="default" 
                                size="icon"
@@ -738,8 +741,15 @@ export default function LogbookPage() {
                         </>
                       ) : (
                         <>
-                          <img src={foto} alt="Preview" className="h-full w-full object-cover" />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* FIX 4: Image Component */}
+                          <Image 
+                            src={foto} 
+                            alt="Preview" 
+                            fill
+                            unoptimized
+                            className="object-cover" 
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button variant="secondary" onClick={retakePhoto} className="gap-2">
                               <Camera className="h-4 w-4" />
                               Foto Ulang
@@ -816,29 +826,36 @@ export default function LogbookPage() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-[50px] font-semibold text-center">No</TableHead>
-                <TableHead className="w-[180px] cursor-pointer" onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}>
+                {/* FIX 5: w-[50px] -> w-12.5 */}
+                <TableHead className="w-12.5 font-semibold text-center">No</TableHead>
+                {/* FIX 5: w-[180px] -> w-45 */}
+                <TableHead className="w-45 cursor-pointer" onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}>
                   <div className="flex items-center gap-2 font-semibold">
                     Tanggal <ArrowUpDown className="h-3 w-3" />
                   </div>
                 </TableHead>
-                <TableHead className="w-[150px] font-semibold">Nama</TableHead>
+                {/* FIX 5: w-[150px] -> w-37.5 */}
+                <TableHead className="w-37.5 font-semibold">Nama</TableHead>
                 <TableHead className="font-semibold">Kegiatan</TableHead>
-                <TableHead className="w-[150px] font-semibold">Dokumentasi</TableHead>
-                <TableHead className="w-[80px] text-right font-semibold">Aksi</TableHead>
+                {/* FIX 5: w-[150px] -> w-37.5 */}
+                <TableHead className="w-37.5 font-semibold">Dokumentasi</TableHead>
+                {/* FIX 5: w-[80px] -> w-20 */}
+                <TableHead className="w-20 text-right font-semibold">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-[300px] text-center">
+                   {/* FIX 5: h-[300px] -> h-75 */}
+                  <TableCell colSpan={6} className="h-75 text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                     <p className="text-sm mt-2 text-muted-foreground">Memuat data...</p>
                   </TableCell>
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-[300px] text-center text-muted-foreground">
+                   {/* FIX 5: h-[300px] -> h-75 */}
+                  <TableCell colSpan={6} className="h-75 text-center text-muted-foreground">
                      Belum ada logbook
                   </TableCell>
                 </TableRow>
@@ -858,8 +875,16 @@ export default function LogbookPage() {
                       {item.kegiatan}
                     </TableCell>
                     <TableCell className="align-top py-4">
-                      <div className="overflow-hidden rounded-md border w-24 aspect-[4/3] bg-muted">
-                        <img src={item.foto} className="h-full w-full object-cover" alt="foto" />
+                      {/* FIX 5: aspect-[4/3] -> aspect-4/3 */}
+                      <div className="overflow-hidden rounded-md border w-24 aspect-4/3 bg-muted relative">
+                        {/* FIX 4: Image Component */}
+                        <Image 
+                          src={item.foto} 
+                          className="object-cover" 
+                          alt="foto" 
+                          fill
+                          unoptimized
+                        />
                       </div>
                     </TableCell>
                     <TableCell className="align-top py-4 text-right">

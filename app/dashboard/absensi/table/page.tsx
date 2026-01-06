@@ -58,7 +58,9 @@ export default function AbsensiTablePage() {
 
       if (error) throw error
       setRecords(data || [])
-    } catch (error: any) {
+    
+    // FIX 1: Mengganti any dengan unknown
+    } catch (error: unknown) {
       console.error("Fetch error:", error)
     } finally {
       setIsLoading(false)
@@ -119,13 +121,16 @@ export default function AbsensiTablePage() {
               <Table>
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800">
                   <TableRow className="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
-                    <TableHead className="w-[60px] text-center font-semibold text-zinc-600 dark:text-zinc-400">No</TableHead>
-                    <TableHead className="w-[80px] font-semibold text-zinc-600 dark:text-zinc-400">Foto</TableHead>
+                    {/* FIX 2: w-[60px] -> w-15 */}
+                    <TableHead className="w-15 text-center font-semibold text-zinc-600 dark:text-zinc-400">No</TableHead>
+                    {/* FIX 3: w-[80px] -> w-20 */}
+                    <TableHead className="w-20 font-semibold text-zinc-600 dark:text-zinc-400">Foto</TableHead>
                     <TableHead className="font-semibold text-zinc-600 dark:text-zinc-400">Nama Karyawan</TableHead>
                     <TableHead className="font-semibold text-zinc-600 dark:text-zinc-400 text-center">Sesi</TableHead>
                     <TableHead className="font-semibold text-zinc-600 dark:text-zinc-400">Tanggal & Waktu</TableHead>
                     <TableHead className="font-semibold text-zinc-600 dark:text-zinc-400">Lokasi Presensi</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    {/* FIX 4: w-[50px] -> w-12.5 */}
+                    <TableHead className="w-12.5"></TableHead>
                   </TableRow>
                 </TableHeader>
                 
@@ -227,7 +232,8 @@ export default function AbsensiTablePage() {
 
                         {/* Lokasi */}
                         <TableCell>
-                          <div className="flex items-start gap-1.5 max-w-[240px]">
+                          {/* FIX 5: max-w-[240px] -> max-w-60 */}
+                          <div className="flex items-start gap-1.5 max-w-60">
                             <MapPin className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400 mt-0.5 shrink-0" />
                             <span className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-snug">
                               {record.lokasi || 'Koordinat terekam'}

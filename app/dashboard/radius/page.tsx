@@ -38,19 +38,37 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const isSupabaseConfigured = supabaseUrl && supabaseKey
 
 const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl!, supabaseKey!)
+  ? createClient(supabaseUrl, supabaseKey)
   : null
 
 // --- LEAFLET SETUP (DYNAMIC IMPORT) ---
 import dynamic from "next/dynamic"
 import "leaflet/dist/leaflet.css"
 
+// Import type saja agar aman dari SSR
+import type { LeafletMouseEvent } from "leaflet"
+
 const MapContainer = dynamic(() => import("react-leaflet").then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import("react-leaflet").then(mod => mod.TileLayer), { ssr: false })
 const Marker = dynamic(() => import("react-leaflet").then(mod => mod.Marker), { ssr: false })
 const Circle = dynamic(() => import("react-leaflet").then(mod => mod.Circle), { ssr: false })
 const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ssr: false })
-const useMapEvents = dynamic(() => import("react-leaflet").then(mod => mod.useMapEvents), { ssr: false })
+
+// FIX: Component Wrapper untuk handle click map secara dinamis
+const MapClickHandler = dynamic(
+  async () => {
+    const { useMapEvents } = await import("react-leaflet")
+    return function MapEvents({ onLocationSelected }: { onLocationSelected: (lat: number, lng: number) => void }) {
+      useMapEvents({
+        click(e: LeafletMouseEvent) {
+          onLocationSelected(e.latlng.lat, e.latlng.lng)
+        },
+      })
+      return null
+    }
+  },
+  { ssr: false }
+)
 
 /* ======================
    TYPE & DEFAULT
@@ -74,16 +92,26 @@ export default function RadiusPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Fix ikon marker Leaflet
+  // FIX: Mengganti require dengan import async untuk fix icon Leaflet
   useEffect(() => {
     setIsMounted(true)
-    const L = require("leaflet")
-    delete L.Icon.Default.prototype._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-      iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-      shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    })
+    
+    const fixLeafletIcon = async () => {
+      try {
+        const L = (await import("leaflet")).default
+        // @ts-expect-error - _getIconUrl is internal Leaflet method
+        delete L.Icon.Default.prototype._getIconUrl
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+        })
+      } catch (e) {
+        console.error("Leaflet icon fix error:", e)
+      }
+    }
+    
+    fixLeafletIcon()
   }, [])
 
   /* ======================
@@ -135,14 +163,9 @@ export default function RadiusPage() {
      HANDLERS
   ====================== */
   
-  const MapClickHandler = () => {
-    useMapEvents({
-      click(e: any) {
-        setLat(e.latlng.lat)
-        setLng(e.latlng.lng)
-      },
-    })
-    return null
+  const handleMapClick = (newLat: number, newLng: number) => {
+    setLat(newLat)
+    setLng(newLng)
   }
 
   const handleGetCurrentLocation = () => {
@@ -205,10 +228,14 @@ export default function RadiusPage() {
         icon: <CheckCircle2 className="h-4 w-4 text-green-500" />
       })
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Gagal menyimpan:", err)
+      let msg = 'Terjadi kesalahan sistem.'
+      if (err instanceof Error) {
+        msg = err.message
+      }
       toast.error("Gagal Menyimpan", {
-        description: err.message || 'Terjadi kesalahan sistem.'
+        description: msg
       })
     } finally {
       setIsSaving(false)
@@ -355,10 +382,9 @@ export default function RadiusPage() {
 
         {/* KOLOM KANAN: PETA */}
         <div className="lg:col-span-2">
-          <Card className="overflow-hidden h-[500px] lg:h-full flex flex-col shadow-md border-muted">
+          <Card className="overflow-hidden h-125 lg:h-full flex flex-col shadow-md border-muted">
             <div className="relative flex-1 z-0">
               {isMounted ? (
-                // @ts-ignore
                 <MapContainer 
                   center={[lat, lng]} 
                   zoom={18} 
@@ -371,7 +397,8 @@ export default function RadiusPage() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   
-                  <MapClickHandler />
+                  {/* Menggunakan Handler yang sudah di-wrap dynamic import */}
+                  <MapClickHandler onLocationSelected={handleMapClick} />
 
                   <Circle 
                     center={[lat, lng]} 
@@ -398,7 +425,7 @@ export default function RadiusPage() {
                 </div>
               )}
 
-              <div className="absolute top-4 right-4 z-[400] bg-background/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm border text-xs font-medium">
+              <div className="absolute top-4 right-4 z-400 bg-background/90 backdrop-blur px-3 py-1.5 rounded-md shadow-sm border text-xs font-medium">
                 Klik peta untuk pindah titik
               </div>
             </div>

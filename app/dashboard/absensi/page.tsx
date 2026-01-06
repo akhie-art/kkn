@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
@@ -28,6 +28,21 @@ import {
   ScanFace
 } from "lucide-react"
 
+// --- TYPES ---
+interface UserProfile {
+  id: string
+  email: string
+  full_name: string
+  face_descriptor: number[] | null
+  avatar_url?: string
+}
+
+interface RadiusSettings {
+  latitude: number
+  longitude: number
+  radius_meters: number
+}
+
 // Inisialisasi Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,8 +53,8 @@ export default function AbsensiPage() {
   const router = useRouter()
   
   // State Data User & Settings
-  const [user, setUser] = useState<any>(null)
-  const [radiusSettings, setRadiusSettings] = useState<any>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [radiusSettings, setRadiusSettings] = useState<RadiusSettings | null>(null)
   
   // State Waktu & Sesi
   const [sessionTime, setSessionTime] = useState<"PAGI" | "MALAM">("PAGI")
@@ -65,6 +80,64 @@ export default function AbsensiPage() {
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // --- LOGIC: Fetch Data ---
+  const fetchData = useCallback(async () => {
+    try {
+      const sessionStr = localStorage.getItem("user_session")
+      if (!sessionStr) return router.push("/auth/login")
+      
+      let sessionData
+      try {
+        sessionData = JSON.parse(sessionStr)
+      } catch {
+        localStorage.removeItem("user_session")
+        return router.push("/auth/login")
+      }
+
+      const { data: userData } = await supabase.from('users').select('*').eq('email', sessionData.email).single()
+      if (!userData) throw new Error("User tidak ditemukan")
+      setUser(userData as UserProfile)
+
+      const { data: rad } = await supabase.from('radius_settings').select('*').single()
+      setRadiusSettings(rad as RadiusSettings)
+
+      const today = new Date().toISOString().split('T')[0]
+      const { data: logs } = await supabase.from('absensi').select('*').eq('user_id', userData.id).eq('tanggal', today)
+
+      if (logs) {
+        const pagi = logs.find(l => l.tipe_absen === "PAGI")
+        const malam = logs.find(l => l.tipe_absen === "MALAM")
+        if (pagi) {
+          setHasPagi(true)
+          setWaktuPagi(new Date(pagi.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
+        }
+        if (malam) {
+          setHasMalam(true)
+          setWaktuMalam(new Date(malam.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
+        }
+      }
+    } catch (err: unknown) { 
+      let msg = "Gagal memuat data";
+      if (err instanceof Error) msg = err.message;
+      toast.error(msg) 
+    } finally { 
+      setIsLoading(false) 
+    }
+  }, [router])
+
+  // --- LOGIC: Load AI Models ---
+  const loadModels = async () => {
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+      ])
+    } catch (e) { 
+      console.error("Models failed to load", e) 
+    }
+  }
+
   // --- EFFECT: Clock & Init ---
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,63 +156,7 @@ export default function AbsensiPage() {
       clearInterval(timer)
       stopCamera()
     }
-  }, [])
-
-  // --- LOGIC: Load AI Models ---
-  const loadModels = async () => {
-    try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-        faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-        faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-      ])
-    } catch (e) { 
-      console.error("Models failed to load", e) 
-    }
-  }
-
-  // --- LOGIC: Fetch Data ---
-  const fetchData = async () => {
-    try {
-      const sessionStr = localStorage.getItem("user_session")
-      if (!sessionStr) return router.push("/auth/login")
-      
-      let sessionData
-      try {
-        sessionData = JSON.parse(sessionStr)
-      } catch (e) {
-        localStorage.removeItem("user_session")
-        return router.push("/auth/login")
-      }
-
-      const { data: userData } = await supabase.from('users').select('*').eq('email', sessionData.email).single()
-      if (!userData) throw new Error("User tidak ditemukan")
-      setUser(userData)
-
-      const { data: rad } = await supabase.from('radius_settings').select('*').single()
-      setRadiusSettings(rad)
-
-      const today = new Date().toISOString().split('T')[0]
-      const { data: logs } = await supabase.from('absensi').select('*').eq('user_id', userData.id).eq('tanggal', today)
-
-      if (logs) {
-        const pagi = logs.find(l => l.tipe_absen === "PAGI")
-        const malam = logs.find(l => l.tipe_absen === "MALAM")
-        if (pagi) {
-          setHasPagi(true)
-          setWaktuPagi(new Date(pagi.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
-        }
-        if (malam) {
-          setHasMalam(true)
-          setWaktuMalam(new Date(malam.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
-        }
-      }
-    } catch (err: any) { 
-      toast.error(err.message) 
-    } finally { 
-      setIsLoading(false) 
-    }
-  }
+  }, [fetchData])
 
   // --- LOGIC: Camera & Geo ---
   const startCamera = async (type: "PAGI" | "MALAM") => {
@@ -153,7 +170,7 @@ export default function AbsensiPage() {
         const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, radiusSettings.latitude, radiusSettings.longitude)
         const valid = dist <= radiusSettings.radius_meters
         setLocationStatus({ valid, msg: valid ? "Lokasi Sesuai" : "Di Luar Radius" })
-      }, (err) => {
+      }, () => {
         setLocationStatus({ valid: false, msg: "Gagal Deteksi Lokasi" })
         toast.error("Aktifkan GPS Anda")
       })
@@ -165,7 +182,7 @@ export default function AbsensiPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
-    } catch (err) { 
+    } catch { 
       toast.error("Kamera tidak aktif/diizinkan") 
       setOpenCamera(false)
     }
@@ -173,28 +190,39 @@ export default function AbsensiPage() {
 
   const stopCamera = () => {
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
-    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+    }
     setOpenCamera(false)
   }
 
   const handleVideoPlay = () => {
+    // Pastikan user descriptor ada sebelum loop
     if (!videoRef.current || !user?.face_descriptor) return
     
+    if (intervalRef.current) clearInterval(intervalRef.current)
+
     intervalRef.current = setInterval(async () => {
       if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return
 
-      const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor()
-      
-      if (detection) {
-        const dist = faceapi.euclideanDistance(detection.descriptor, new Float32Array(user.face_descriptor))
-        setFaceMatchStatus({ matched: dist < 0.45 })
+      try {
+        const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor()
+        
+        // FIX: Tambahkan pengecekan 'user?.face_descriptor' di sini
+        if (detection && user?.face_descriptor) {
+          const dist = faceapi.euclideanDistance(detection.descriptor, new Float32Array(user.face_descriptor))
+          setFaceMatchStatus({ matched: dist < 0.45 })
+        }
+      } catch (err) {
+        console.error("Face detection error:", err)
       }
     }, 800)
   }
 
   // --- LOGIC: Submit ---
   const handleSubmit = async () => {
-    if (!videoRef.current || !canvasRef.current) return
+    if (!videoRef.current || !canvasRef.current || !user) return
     setIsSubmitting(true)
 
     try {
@@ -209,14 +237,14 @@ export default function AbsensiPage() {
       const { error: uploadError } = await supabase.storage.from('logbook-photos').upload(fileName, blob)
       if (uploadError) throw uploadError
 
-      const { data: { publicUrl } } = supabase.storage.from('logbook-photos').getPublicUrl(fileName)
+      const { data: publicUrlData } = supabase.storage.from('logbook-photos').getPublicUrl(fileName)
 
       const { error: insertError } = await supabase.from('absensi').insert({
         user_id: user.id,
         nama: user.full_name,
         tanggal: new Date().toISOString().split('T')[0],
         tipe_absen: absenType,
-        foto_url: publicUrl,
+        foto_url: publicUrlData.publicUrl,
         lokasi: locationStatus.valid ? "Dalam Radius" : "Bypass/Error", 
         created_at: new Date().toISOString()
       })
@@ -226,9 +254,11 @@ export default function AbsensiPage() {
       toast.success("Absensi berhasil tercatat!")
       stopCamera()
       fetchData()
-    } catch (err: any) { 
+    } catch (err: unknown) { 
       console.error(err)
-      toast.error("Gagal mengirim data: " + err.message) 
+      let msg = "Terjadi kesalahan";
+      if (err instanceof Error) msg = err.message;
+      toast.error("Gagal mengirim data: " + msg) 
     } finally { 
       setIsSubmitting(false) 
     }
@@ -363,8 +393,8 @@ export default function AbsensiPage() {
 
       {/* MODAL VERIFIKASI WAJAH - SHORT & COMPACT */}
       <Dialog open={openCamera} onOpenChange={(v) => !v && stopCamera()}>
-        {/* sm:max-w-[340px] membuat modal lebih ramping */}
-        <DialogContent className="sm:max-w-[340px] p-0 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-[18px] shadow-none overflow-hidden gap-0">
+        {/* Fix 2: sm:max-w-[340px] -> sm:max-w-85 */}
+        <DialogContent className="sm:max-w-85 p-0 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-[18px] shadow-none overflow-hidden gap-0">
           
           {/* Header Compact */}
           <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-white dark:bg-zinc-950">
@@ -443,10 +473,11 @@ export default function AbsensiPage() {
             >
               Batal
             </Button>
+            {/* Fix 3: flex-[2] -> flex-2 */}
             <Button 
               disabled={!faceMatchStatus.matched || !locationStatus.valid || isSubmitting}
               onClick={handleSubmit} 
-              className="flex-[2] rounded-lg h-9 bg-zinc-900 dark:bg-zinc-50 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-bold transition-all shadow-none disabled:opacity-50"
+              className="flex-2 rounded-lg h-9 bg-zinc-900 dark:bg-zinc-50 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-bold transition-all shadow-none disabled:opacity-50"
             >
               {isSubmitting ? (
                 <div className="flex items-center gap-2">

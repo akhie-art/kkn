@@ -61,13 +61,16 @@ const supabase = createClient(
 )
 
 // --- TIPE DATA ---
+type UserRole = "admin" | "mahasiswa" | "dpl"
+
 type UserData = {
   id: string
   full_name: string
   email: string
-  role: "admin" | "mahasiswa" | "dpl"
+  role: UserRole
   avatar_url?: string
   created_at: string
+  password?: string // Opsional untuk payload update
 }
 
 export default function UserManagementPage() {
@@ -82,7 +85,7 @@ export default function UserManagementPage() {
     name: "",
     email: "",
     password: "",
-    role: "mahasiswa"
+    role: "mahasiswa" as UserRole
   })
 
   // State Modal Edit
@@ -92,7 +95,7 @@ export default function UserManagementPage() {
     name: "",
     email: "",
     password: "", // Opsional saat edit
-    role: "mahasiswa"
+    role: "mahasiswa" as UserRole
   })
   
   const [showPassword, setShowPassword] = useState(false)
@@ -107,10 +110,14 @@ export default function UserManagementPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setUsers(data || [])
-    } catch (error: any) {
+      setUsers(data as UserData[] || [])
+      
+    // FIX: unknown error type
+    } catch (error: unknown) {
       console.error("Error fetching users:", error)
-      toast.error("Gagal Memuat Data", { description: error.message })
+      if (error instanceof Error) {
+        toast.error("Gagal Memuat Data", { description: error.message })
+      }
     } finally {
       setLoading(false)
     }
@@ -147,8 +154,11 @@ export default function UserManagementPage() {
       setFormData({ name: "", email: "", password: "", role: "mahasiswa" })
       fetchUsers()
 
-    } catch (error: any) {
-      toast.error("Gagal Menambah User", { description: error.message })
+    // FIX: unknown error type
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("Gagal Menambah User", { description: error.message })
+      }
     } finally {
       setActionLoading(false)
     }
@@ -172,7 +182,8 @@ export default function UserManagementPage() {
     setActionLoading(true)
 
     try {
-      const updates: any = {
+      // FIX: Tipe data spesifik untuk updates
+      const updates: Partial<UserData> & { password?: string } = {
         full_name: editFormData.name,
         email: editFormData.email,
         role: editFormData.role,
@@ -194,8 +205,11 @@ export default function UserManagementPage() {
       setIsEditOpen(false)
       fetchUsers()
 
-    } catch (error: any) {
-      toast.error("Gagal Update", { description: error.message })
+    // FIX: unknown error type
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("Gagal Update", { description: error.message })
+      }
     } finally {
       setActionLoading(false)
     }
@@ -210,8 +224,11 @@ export default function UserManagementPage() {
       if (error) throw error
       toast.success("User Dihapus")
       setUsers(prev => prev.filter(u => u.id !== id))
-    } catch (error: any) {
-      toast.error("Gagal Menghapus", { description: error.message })
+    // FIX: unknown error type
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("Gagal Menghapus", { description: error.message })
+      }
     }
   }
 
@@ -281,7 +298,8 @@ export default function UserManagementPage() {
                     <Plus className="mr-2 h-4 w-4" /> Tambah User
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                {/* FIX: sm:max-w-[425px] -> sm:max-w-md */}
+                <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
                   <DialogHeader>
                     <DialogTitle className="text-zinc-900 dark:text-zinc-50">Buat Akun Baru</DialogTitle>
                     <DialogDescription className="text-zinc-500 dark:text-zinc-400">Data akan disimpan langsung ke database.</DialogDescription>
@@ -319,7 +337,8 @@ export default function UserManagementPage() {
                        <select 
                           className="flex h-10 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100"
                           value={formData.role}
-                          onChange={(e) => setFormData({...formData, role: e.target.value as any})}
+                          // FIX: e.target.value as UserRole
+                          onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
                        >
                             <option value="mahasiswa">Mahasiswa</option>
                             <option value="dpl">DPL</option>
@@ -342,10 +361,13 @@ export default function UserManagementPage() {
           <Table>
             <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
               <TableRow className="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
-                <TableHead className="w-[60px] text-center font-medium text-zinc-500 dark:text-zinc-400">No</TableHead>
+                {/* FIX: w-[60px] -> w-15 */}
+                <TableHead className="w-15 text-center font-medium text-zinc-500 dark:text-zinc-400">No</TableHead>
                 <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Pengguna</TableHead>
-                <TableHead className="w-[150px] font-medium text-zinc-500 dark:text-zinc-400">Role</TableHead>
-                <TableHead className="w-[80px] text-right font-medium text-zinc-500 dark:text-zinc-400">Aksi</TableHead>
+                {/* FIX: w-[150px] -> w-37.5 */}
+                <TableHead className="w-37.5 font-medium text-zinc-500 dark:text-zinc-400">Role</TableHead>
+                {/* FIX: w-[80px] -> w-20 */}
+                <TableHead className="w-20 text-right font-medium text-zinc-500 dark:text-zinc-400">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -423,7 +445,8 @@ export default function UserManagementPage() {
 
       {/* --- MODAL EDIT USER (DI LUAR LOOP) --- */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+        {/* FIX: sm:max-w-[425px] -> sm:max-w-md */}
+        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle className="text-zinc-900 dark:text-zinc-50">Edit Data Pengguna</DialogTitle>
             <DialogDescription className="text-zinc-500 dark:text-zinc-400">Ubah detail user di bawah ini.</DialogDescription>
@@ -492,7 +515,8 @@ export default function UserManagementPage() {
                   <select 
                   className="flex h-10 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100"
                   value={editFormData.role}
-                  onChange={(e) => setEditFormData({...editFormData, role: e.target.value as any})}
+                  // FIX: e.target.value as UserRole
+                  onChange={(e) => setEditFormData({...editFormData, role: e.target.value as UserRole})}
                   >
                     <option value="mahasiswa">Mahasiswa</option>
                     <option value="dpl">DPL (Dosen Pembimbing)</option>

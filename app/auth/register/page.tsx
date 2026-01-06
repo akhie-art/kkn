@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image" // Import Image component
 import { createClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import {
@@ -25,8 +26,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react"
-import { ModeToggle } from "@/components/mode-toggle" // Pastikan path import sesuai
-
+import { ModeToggle } from "@/components/mode-toggle"
 import * as faceapi from 'face-api.js'
 
 // --- SUPABASE CLIENT ---
@@ -34,6 +34,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+// Definisi tipe sederhana untuk titik koordinat wajah
+type FacePoint = { x: number; y: number }
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -52,9 +55,10 @@ export default function RegisterPage() {
   const [isFaceDetected, setIsFaceDetected] = useState(false)
   
   // Data Wajah
+  // FIX 1: Menghapus 'any' dan mengganti dengan tipe spesifik
   const [faceData, setFaceData] = useState<{
     descriptor: number[] | null,
-    landmarks: any | null
+    landmarks: FacePoint[] | null
   }>({ descriptor: null, landmarks: null })
 
   // Refs
@@ -252,9 +256,14 @@ export default function RegisterPage() {
       toast.success("Registrasi Berhasil", { description: "Akun mahasiswa telah dibuat." })
       router.push("/auth/login") 
 
-    } catch (error: any) {
+    // FIX 2: Mengganti 'any' dengan 'unknown' dan pengecekan tipe Error
+    } catch (error: unknown) {
       console.error(error)
-      toast.error("Registrasi Gagal", { description: error.message || "Terjadi kesalahan." })
+      let errorMessage = "Terjadi kesalahan.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast.error("Registrasi Gagal", { description: errorMessage })
     } finally {
       setIsLoading(false)
     }
@@ -263,12 +272,12 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 font-sans text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
       
-      {/* Dark Mode Toggle Positioned Absolutely */}
       <div className="absolute top-4 right-4 z-50">
         <ModeToggle />
       </div>
 
-      <Card className="w-full max-w-[420px] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
+      {/* FIX 3: max-w-[420px] -> max-w-105 */}
+      <Card className="w-full max-w-105 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
         
         <CardHeader className="text-center pb-6 pt-8 space-y-1">
           <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Buat Akun Baru</CardTitle>
@@ -402,9 +411,16 @@ export default function RegisterPage() {
                     )
                   ) : (
                     // State: Photo Taken
+                    // FIX 4: Ganti <img> dengan <Image /> Next.js
                     <>
-                      <img src={photo} alt="Preview" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                      <Image 
+                        src={photo} 
+                        alt="Preview" 
+                        fill
+                        className="object-cover"
+                        unoptimized // Diperlukan untuk base64 string
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
                         <Button 
                           type="button" 
                           variant="secondary" 

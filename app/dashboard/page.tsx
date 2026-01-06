@@ -165,7 +165,8 @@ export default function DashboardPage() {
             <CardDescription className="text-zinc-500 dark:text-zinc-400 text-xs">Grafik partisipasi kegiatan KKN</CardDescription>
           </CardHeader>
           <CardContent className="pl-6 pr-6 pb-6">
-            <div className="h-[250px] w-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-950/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 gap-3">
+            {/* FIX: h-[250px] -> h-62.5 */}
+            <div className="h-62.5 w-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-950/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 gap-3">
               <div className="p-3 bg-white dark:bg-zinc-900 rounded-full border border-zinc-100 dark:border-zinc-800 shadow-sm">
                  <Activity className="h-6 w-6 text-zinc-300 dark:text-zinc-700" />
               </div>

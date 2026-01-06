@@ -7,7 +7,6 @@ import { createClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -61,7 +60,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
 
   // --- FACE LOGIN STATE ---
-  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [, setIsCameraOpen] = useState(false)
   const [isModelLoading, setIsModelLoading] = useState(false)
   const [faceMatchStatus, setFaceMatchStatus] = useState<"scanning" | "found" | "unknown">("scanning")
   const [detectedName, setDetectedName] = useState("")
@@ -129,15 +128,15 @@ export default function LoginPage() {
     }
 
     if (data) {
-      usersRef.current = data.map((u: any) => ({
-        ...u,
+      usersRef.current = data.map((u) => ({
+        ...(u as UserProfile),
         face_descriptor: u.face_descriptor
       }))
     }
   }
 
   // --- 3. LOGIKA LOGIN SUKSES ---
-  const performLoginSuccess = (user: any) => {
+  const performLoginSuccess = (user: UserProfile) => {
     if (isLoginSuccess) return
     setIsLoginSuccess(true)
     
@@ -169,9 +168,9 @@ export default function LoginPage() {
 
       if (error || !data) throw new Error("Kredensial tidak valid.")
 
-      performLoginSuccess(data)
+      performLoginSuccess(data as UserProfile)
 
-    } catch (error: any) {
+    } catch {
       toast.error("Login Gagal", { description: "Email atau password salah." })
     } finally {
       setIsLoading(false)
@@ -192,7 +191,7 @@ export default function LoginPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
-    } catch (err) {
+    } catch {
       toast.error("Akses Kamera Ditolak")
       setIsCameraOpen(false)
     }
@@ -266,7 +265,7 @@ export default function LoginPage() {
               setFaceMatchStatus("found")
               setDetectedName(bestMatch.full_name)
               if (intervalRef.current) clearInterval(intervalRef.current)
-              setTimeout(() => performLoginSuccess(bestMatch), 800) 
+              setTimeout(() => performLoginSuccess(bestMatch as UserProfile), 800) 
             } else {
               setFaceMatchStatus("unknown")
             }
@@ -288,7 +287,7 @@ export default function LoginPage() {
       </div>
 
       {/* Card Wrapper */}
-      <Card className="w-full max-w-[400px] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
+      <Card className="w-full max-w-100 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-none rounded-2xl overflow-hidden transition-colors duration-300">
         
         <CardHeader className="text-center pb-6 pt-8 space-y-1">
           <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Selamat Datang</CardTitle>
@@ -393,7 +392,7 @@ export default function LoginPage() {
               </div>
 
               {/* Minimal Status Indicators */}
-              <div className="text-center w-full min-h-[60px]">
+              <div className="text-center w-full min-h-15">
                 {faceMatchStatus === "scanning" && (
                   <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2">
                     <ScanFace className="h-5 w-5 text-zinc-400 dark:text-zinc-500 mb-2 animate-pulse" />
