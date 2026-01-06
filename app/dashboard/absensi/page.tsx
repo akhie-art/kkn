@@ -43,11 +43,11 @@ interface RadiusSettings {
   radius_meters: number
 }
 
-// Inisialisasi Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// --- SUPABASE SINGLETON ---
+// Mencegah warning "Multiple GoTrueClient instances"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export default function AbsensiPage() {
   const router = useRouter()
@@ -68,6 +68,8 @@ export default function AbsensiPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openCamera, setOpenCamera] = useState(false)
+  
+  // State Absen Type: Tetap pakai Uppercase untuk UI logic, tapi convert saat kirim DB
   const [absenType, setAbsenType] = useState<"PAGI" | "MALAM">("PAGI")
   
   // State Validasi
@@ -84,29 +86,51 @@ export default function AbsensiPage() {
   const fetchData = useCallback(async () => {
     try {
       const sessionStr = localStorage.getItem("user_session")
-      if (!sessionStr) return router.push("/auth/login")
+      if (!sessionStr) {
+        router.push("/auth/login")
+        return
+      }
       
       let sessionData
       try {
         sessionData = JSON.parse(sessionStr)
       } catch {
         localStorage.removeItem("user_session")
-        return router.push("/auth/login")
+        router.push("/auth/login")
+        return
       }
 
-      const { data: userData } = await supabase.from('users').select('*').eq('email', sessionData.email).single()
-      if (!userData) throw new Error("User tidak ditemukan")
+      // 1. Ambil User (Handle error 406 jika user tidak ada di tabel public)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', sessionData.email)
+        .maybeSingle() // Gunakan maybeSingle agar tidak error 406 jika kosong
+
+      if (userError) throw userError
+      if (!userData) {
+        toast.error("Data pengguna tidak ditemukan di database.")
+        return
+      }
       setUser(userData as UserProfile)
 
+      // 2. Ambil Radius
       const { data: rad } = await supabase.from('radius_settings').select('*').single()
-      setRadiusSettings(rad as RadiusSettings)
+      if (rad) setRadiusSettings(rad as RadiusSettings)
 
+      // 3. Cek Log Hari Ini
       const today = new Date().toISOString().split('T')[0]
-      const { data: logs } = await supabase.from('absensi').select('*').eq('user_id', userData.id).eq('tanggal', today)
+      const { data: logs } = await supabase
+        .from('absensi')
+        .select('*')
+        .eq('user_id', userData.id)
+        .eq('tanggal', today)
 
       if (logs) {
-        const pagi = logs.find(l => l.tipe_absen === "PAGI")
-        const malam = logs.find(l => l.tipe_absen === "MALAM")
+        // Cek case-insensitive karena DB mungkin mengembalikan 'pagi'/'malam' (lowercase)
+        const pagi = logs.find(l => l.tipe_absen?.toUpperCase() === "PAGI")
+        const malam = logs.find(l => l.tipe_absen?.toUpperCase() === "MALAM")
+        
         if (pagi) {
           setHasPagi(true)
           setWaktuPagi(new Date(pagi.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
@@ -119,6 +143,7 @@ export default function AbsensiPage() {
     } catch (err: unknown) { 
       let msg = "Gagal memuat data";
       if (err instanceof Error) msg = err.message;
+      console.error("Fetch Error:", err)
       toast.error(msg) 
     } finally { 
       setIsLoading(false) 
@@ -128,6 +153,7 @@ export default function AbsensiPage() {
   // --- LOGIC: Load AI Models ---
   const loadModels = async () => {
     try {
+      // Pastikan path models benar di folder public/models
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
         faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
@@ -143,6 +169,7 @@ export default function AbsensiPage() {
     const timer = setInterval(() => {
       const now = new Date()
       setCurrentTime(now)
+      // Logic sesi: Pagi < 15:00, Malam >= 15:00
       setSessionTime(now.getHours() >= 0 && now.getHours() < 15 ? "PAGI" : "MALAM")
     }, 1000)
     
@@ -168,8 +195,9 @@ export default function AbsensiPage() {
     if (navigator.geolocation && radiusSettings) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, radiusSettings.latitude, radiusSettings.longitude)
+        // Validasi Radius
         const valid = dist <= radiusSettings.radius_meters
-        setLocationStatus({ valid, msg: valid ? "Lokasi Sesuai" : "Di Luar Radius" })
+        setLocationStatus({ valid, msg: valid ? "Lokasi Sesuai" : `Di Luar Radius (${Math.round(dist)}m)` })
       }, () => {
         setLocationStatus({ valid: false, msg: "Gagal Deteksi Lokasi" })
         toast.error("Aktifkan GPS Anda")
@@ -198,7 +226,6 @@ export default function AbsensiPage() {
   }
 
   const handleVideoPlay = () => {
-    // Pastikan user descriptor ada sebelum loop
     if (!videoRef.current || !user?.face_descriptor) return
     
     if (intervalRef.current) clearInterval(intervalRef.current)
@@ -209,9 +236,9 @@ export default function AbsensiPage() {
       try {
         const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor()
         
-        // FIX: Tambahkan pengecekan 'user?.face_descriptor' di sini
         if (detection && user?.face_descriptor) {
           const dist = faceapi.euclideanDistance(detection.descriptor, new Float32Array(user.face_descriptor))
+          // Threshold 0.45 biasanya cukup ketat
           setFaceMatchStatus({ matched: dist < 0.45 })
         }
       } catch (err) {
@@ -239,11 +266,14 @@ export default function AbsensiPage() {
 
       const { data: publicUrlData } = supabase.storage.from('logbook-photos').getPublicUrl(fileName)
 
+      // FIX UTAMA: Kirim 'pagi'/'malam' huruf kecil ke database untuk menghindari error ENUM
+      const dbAbsenType = absenType.toLowerCase(); 
+
       const { error: insertError } = await supabase.from('absensi').insert({
         user_id: user.id,
         nama: user.full_name,
         tanggal: new Date().toISOString().split('T')[0],
-        tipe_absen: absenType,
+        tipe_absen: dbAbsenType, // Menggunakan huruf kecil
         foto_url: publicUrlData.publicUrl,
         lokasi: locationStatus.valid ? "Dalam Radius" : "Bypass/Error", 
         created_at: new Date().toISOString()
@@ -258,6 +288,10 @@ export default function AbsensiPage() {
       console.error(err)
       let msg = "Terjadi kesalahan";
       if (err instanceof Error) msg = err.message;
+      // Tampilkan error spesifik dari Supabase jika ada
+      if (JSON.stringify(msg).includes("enum")) {
+         msg = "Format Tipe Absen tidak sesuai database. Hubungi admin."
+      }
       toast.error("Gagal mengirim data: " + msg) 
     } finally { 
       setIsSubmitting(false) 
@@ -393,7 +427,6 @@ export default function AbsensiPage() {
 
       {/* MODAL VERIFIKASI WAJAH - SHORT & COMPACT */}
       <Dialog open={openCamera} onOpenChange={(v) => !v && stopCamera()}>
-        {/* Fix 2: sm:max-w-[340px] -> sm:max-w-85 */}
         <DialogContent className="sm:max-w-85 p-0 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-[18px] shadow-none overflow-hidden gap-0">
           
           {/* Header Compact */}
@@ -473,7 +506,6 @@ export default function AbsensiPage() {
             >
               Batal
             </Button>
-            {/* Fix 3: flex-[2] -> flex-2 */}
             <Button 
               disabled={!faceMatchStatus.matched || !locationStatus.valid || isSubmitting}
               onClick={handleSubmit} 
